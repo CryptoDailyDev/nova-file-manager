@@ -21,13 +21,13 @@ class IndexController extends Controller
 
         /** @var \Illuminate\Pagination\LengthAwarePaginator $paginator */
         $paginator = $manager
-            ->paginate($manager->files())
+            ->paginate($manager->contents('files'))
             ->onEachSide(1);
 
         return response()->json([
             'disk' => $manager->getDisk(),
             'breadcrumbs' => $manager->breadcrumbs(),
-            'folders' => $manager->directories(),
+            'folders' => $manager->contents('dirs'),
             'files' => $paginator->items(),
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
