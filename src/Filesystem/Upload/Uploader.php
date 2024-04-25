@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Oneduo\NovaFileManager\Filesystem\Upload;
 
-use Intervention\Image\ImageManagerStatic as Image;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
