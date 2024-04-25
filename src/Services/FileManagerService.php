@@ -105,6 +105,47 @@ class FileManagerService implements FileManagerContract, ResolvesUrlContract
         return $this->filesystem;
     }
 
+    public function contents($type, $sortBy = 'desc') {
+        // register by default a call to omit hidden files
+        $this->omitHiddenFilesAndDirectories();
+
+        // register the search callback
+        $this->applySearchCallback();
+
+        $listing = $this->filesystem->listContents($this->path);
+
+        $files = [];
+
+        foreach ($listing as $file) {
+            $files[] = [
+                'path' => $file->path(),
+                'type' => $file->type(),
+                'lastModified' => $file->lastModified()
+            ];
+        }
+
+        $files = collect($files)->groupBy('type');
+
+        if($type == 'files') {
+            return $files->get('file') ? $files->get('file')->sortBy([['lastModified', $sortBy]])->pluck('path')->flatten() : collect();
+        }
+
+        if(! $files->get('dir')) return collect();
+
+        return $files
+            ->get('dir')
+            ->sortBy([['name', $sortBy], ['lastModified', $sortBy]])
+            ->map(function ($file) {
+                $path = data_get($file, 'path');
+                return [
+                    'id' => sha1($path),
+                    'path' => str($path)->start(DIRECTORY_SEPARATOR),
+                    'name' => pathinfo($path, PATHINFO_BASENAME),
+                    'type' => 'folder',
+                ];
+            });
+    }
+
     /**
      * Retrieve all the files in the current path
      *
