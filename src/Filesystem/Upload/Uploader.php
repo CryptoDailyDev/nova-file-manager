@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Oneduo\NovaFileManager\Filesystem\Upload;
 
+use Intervention\Image\ImageManagerStatic as Image;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Oneduo\NovaFileManager\Contracts\Filesystem\Upload\Uploader as UploaderContract;
 use Oneduo\NovaFileManager\Events\FileUploaded;
@@ -37,6 +39,45 @@ class Uploader implements UploaderContract
         $save = $receiver->receive();
 
         if ($save->isFinished()) {
+                try {
+                    $fileExtension = $save->getFile()->getClientOriginalExtension();
+                    $currentFilePath = $save->getFile()->getRealPath();
+
+                    $tempFileName = uniqid() . '.' . $fileExtension;
+                    $tempFilePath = sys_get_temp_dir() . '/' . $tempFileName;
+
+                    file_put_contents($tempFilePath, file_get_contents($currentFilePath));
+
+                    $mime = mime_content_type($tempFilePath);
+                    $info = pathinfo($tempFilePath);
+                    $name = $info['basename'];
+                    $output = new \CURLFile($tempFilePath, $mime, $name);
+                    $data = array(
+                        "files" => $output,
+                    );
+
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, 'http://api.resmush.it/?qlty=80');
+                    curl_setopt($ch, CURLOPT_POST,1);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                    $result = curl_exec($ch);
+                    if (curl_errno($ch)) {
+                        $result = curl_error($ch);
+                    }
+                    curl_close ($ch);
+
+                    Storage::delete($tempFilePath);
+
+                    $data = json_decode($result, true);
+
+                    if (isset($data['dest'])) {
+                        file_put_contents($currentFilePath, file_get_contents($data['dest']));
+                    }
+                } catch (\Exception $e) {
+                }
+
             return $this->saveFile($request, $save->getFile());
         }
 
